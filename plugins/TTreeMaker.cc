@@ -62,6 +62,9 @@ private:
     float leading_jet_phi;
     float subleading_jet_phi;
 
+    float leading_lepton_charge;
+    float subleading_lepton_charge;
+
     float dilepton_mass;
     float Mlljj;
     float dR_leadLepton_leadJet;
@@ -125,6 +128,7 @@ private:
     void clear() {
       run = lumi = event = 0;
       leading_lepton_pt = leading_lepton_eta = leading_lepton_phi = subleading_lepton_pt = subleading_lepton_eta = subleading_lepton_phi = -999;
+      leading_lepton_charge = subleading_lepton_pt = -999;
       leading_jet_pt = leading_jet_eta = leading_jet_phi = subleading_jet_pt = subleading_jet_eta = subleading_jet_phi = -999;
       gen_leading_lepton_pt = gen_leading_lepton_eta = gen_leading_lepton_phi = gen_subleading_lepton_pt = gen_subleading_lepton_eta = gen_subleading_lepton_phi = -999;
       gen_leading_jet_pt = gen_leading_jet_eta = gen_leading_jet_phi = gen_subleading_jet_pt = gen_subleading_jet_eta = gen_subleading_jet_phi = -999;
@@ -192,6 +196,9 @@ TTreeMaker::TTreeMaker(const edm::ParameterSet& cfg)
   tree->Branch("subleading_jet_pt", &nt.subleading_jet_pt, "subleading_jet_pt/F");
   tree->Branch("subleading_jet_eta", &nt.subleading_jet_eta, "subleading_jet_eta/F");
   tree->Branch("subleading_jet_phi", &nt.subleading_jet_phi, "subleading_jet_phi/F");
+
+  tree->Branch("leading_lepton_charge", &nt.leading_lepton_charge, "leading_lepton_charge/i");
+  tree->Branch("subleading_lepton_charge", &nt.subleading_lepton_charge, "subleading_lepton_charge/i");
 
   tree->Branch("gen_leading_lepton_pt", &nt.gen_leading_lepton_pt, "gen_leading_lepton_pt/F");
   tree->Branch("gen_leading_lepton_eta", &nt.gen_leading_lepton_eta, "gen_leading_lepton_eta/F");
@@ -317,6 +324,7 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
       nt.leading_lepton_pt = mus[0].pt();
       nt.leading_lepton_eta = mus[0].eta();
       nt.leading_lepton_phi = mus[0].phi();
+      nt.leading_lepton_charge = mus[0].charge();
       if(js.size() > 0) nt.dR_leadLepton_leadJet = deltaR(mus[0],js[0]);
       if(js.size() > 1) nt.dR_leadLepton_subleadJet = deltaR(mus[0],js[1]);
       if(mus.size() > 1){
@@ -324,6 +332,7 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
 	nt.subleading_lepton_pt = mus[1].pt();
 	nt.subleading_lepton_eta = mus[1].eta();
 	nt.subleading_lepton_phi = mus[1].phi();
+	nt.subleading_lepton_charge = mus[1].charge();
 	nt.dilepton_mass = (mus[0].p4() + mus[1].p4()).M();
 	nt.dR_leadLepton_subleadLepton = deltaR(mus[0],mus[1]);
 	if(js.size() > 0) nt.dR_subleadLepton_leadJet = deltaR(mus[1],js[0]);
