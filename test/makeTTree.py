@@ -1,5 +1,6 @@
 import os,sys
 import FWCore.ParameterSet.Config as cms
+from ExoAnalysis.cmsWR.JEC_cff import *
 
 process = cms.Process('ANA')
 
@@ -34,7 +35,7 @@ process.source = cms.Source("PoolSource",
                             fileNames=cms.untracked.vstring('file:/afs/cern.ch/user/j/jchavesb/work/WR_skims/DYJets/skim_signal_1.root'),
                             )
 
-os.system('das_client.py --query="file dataset=/TTJets_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8/jchavesb-skim_50ns_sideband-4f011c8726985896d9072f83ba7d78ab/USER instance=prod/phys03" --limit=0 > pappy.txt')
+os.system('das_client.py --query="file dataset=/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8/RunIISpring15DR74-Asympt50ns_MCRUN2_74_V9A-v2/MINIAODSIM instance=prod/phys03" --limit=0 > pappy.txt')
 
 fn = 'pappy.txt'
 
@@ -47,17 +48,20 @@ for line in sec_file:
         #mysecfilelist.append('file:'+line.strip())
         mysecfilelist.append(line.strip())
 process.source.fileNames = mysecfilelist
-outfn = '~/eos/WR_skims/skim_ttree.root'
+outfn = 'skim_ttree.root'
 process.TFileService = cms.Service('TFileService', fileName = cms.string(outfn))
 
 process.options = cms.untracked.PSet(
     wantSummary = cms.untracked.bool(True)
 )
 
+JEC_correction(process)
+
 from HLTrigger.HLTfilters.hltHighLevel_cfi import hltHighLevel
 process.triggerFilter = hltHighLevel.clone()
-process.triggerFilter.HLTPaths = ['HLT_Mu45_eta2p1_v*','HLT_Mu50_v*','HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_v*']
-#process.triggerFilter.HLTPaths = ['HLT_Mu30_Ele30_CaloIdL_GsfTrkIdVL_v*']
+#process.triggerFilter.HLTPaths = ['HLT_Mu45_eta2p1_v*','HLT_Mu50_v*']
+#process.triggerFilter.HLTPaths = ['HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_v*']
+process.triggerFilter.HLTPaths = ['HLT_Mu30_Ele30_CaloIdL_GsfTrkIdVL_v*']
 process.triggerFilter.andOr = True # = OR
 #for name, path in process.paths.items():
  #   if not name.startswith('eventCleaning'):
@@ -66,46 +70,6 @@ process.ptrig = cms.Path(process.triggerFilter)
 
 process.SelectEvents = cms.untracked.PSet(SelectEvents = cms.vstring('ptrig'))
 
-process.load("CondCore.DBCommon.CondDBCommon_cfi")
-from CondCore.DBCommon.CondDBSetup_cfi import *
-process.jec = cms.ESSource("PoolDBESSource",
-      DBParameters = cms.PSet(
-        messageLevel = cms.untracked.int32(0)
-        ),
-      timetype = cms.string('runnumber'),
-      toGet = cms.VPSet(
-      cms.PSet(
-            record = cms.string('JetCorrectionsRecord'),
-            tag    = cms.string('JetCorrectorParametersCollection_Summer15_50nsV2_MC_AK4PFchs'),
-            # tag    = cms.string('JetCorrectorParametersCollection_Summer12_V3_MC_AK5PF'),
-            label  = cms.untracked.string('AK4PFchs')
-            ),
-      ## here you add as many jet types as you need
-      ## note that the tag name is specific for the particular sqlite file 
-      ), 
-      connect = cms.string('sqlite:Summer15_50nsV2_MC.db')
-)
-## add an es_prefer statement to resolve a possible conflict from simultaneous connection to a global tag
-process.es_prefer_jec = cms.ESPrefer('PoolDBESSource','jec')
-
-
-from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import patJetCorrFactorsUpdated
-process.patJetCorrFactorsReapplyJEC = patJetCorrFactorsUpdated.clone(
-  src = cms.InputTag("slimmedJets"),
-  levels = cms.vstring('L1FastJet', 
-        'L2Relative', 
-        'L3Absolute'),
-  payload = cms.string('AK4PFchs') ) # Make sure to choose the appropriate levels and payload here!
-
-from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import patJetsUpdated
-process.patJetsReapplyJEC = patJetsUpdated.clone(
-  jetSource = cms.InputTag("slimmedJets"),
-  jetCorrFactorsSource = cms.VInputTag(cms.InputTag("patJetCorrFactorsReapplyJEC"))
-  )
-
-#process.p += cms.Sequence( process.patJetCorrFactorsReapplyJEC + process. patJetsReapplyJEC )
-
-
-#process.p = cms.Path(process.patJetCorrFactorsReapplyJEC + process. patJetsReapplyJEC + process.wRsubleadingElectron + process.wRlooseJet + process.triggerFilter  + process.MakeTTree_Electrons)
-process.p = cms.Path(process.patJetCorrFactorsReapplyJEC + process. patJetsReapplyJEC + process.wRtunePMuons + process.wRsubleadingMuon + process.wRlooseJet + process.triggerFilter  + process.MakeTTree_Muons)
-#process.p = cms.Path(process.patJetCorrFactorsReapplyJEC + process. patJetsReapplyJEC + process.wRtunePMuons + process.wRsubleadingMuon + process.wRlooseJet + process.triggerFilter  + process.MakeTTree_EleMuon)
+#process.p = cms.Path(process.patJetCorrFactorsReapplyJEC + process. patJetsReapplyJEC + process.wRsubleadingElectron + process.wRlooseJet + process.triggerFilter + process.triggerFilter  + process.egmGsfElectronIDSequence * process.MakeTTree_Electrons)
+#process.p = cms.Path(process.patJetCorrFactorsReapplyJEC + process. patJetsReapplyJEC + process.wRtunePMuons + process.wRsubleadingMuon + process.wRlooseJet + process.triggerFilter  + process.MakeTTree_Muons)
+process.p = cms.Path(process.patJetCorrFactorsReapplyJEC + process. patJetsReapplyJEC + process.wRtunePMuons + process.wRsubleadingMuon + process.wRlooseJet + process.triggerFilter  + process.egmGsfElectronIDSequence * process.MakeTTree_EleMuon)

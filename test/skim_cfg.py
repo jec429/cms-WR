@@ -3,7 +3,7 @@
 # Revision: 1.19 
 # Source: /local/reps/CMSSW/CMSSW/Configuration/Applications/python/ConfigBuilder.py,v 
 # with command line options: miniAOD --filein file:rec_DIGI_L1_DIGI2RAW_HLT_RAW2DIGI_L1Reco_RECO_PU.root --fileout file:EXO-Phys14DR-00009.root --mc --eventcontent MINIAODSIM --runUnscheduled --datatier MINIAODSIM --conditions auto:run2_mc --step PAT
-import os
+import os,sys
 import FWCore.ParameterSet.Config as cms
 
 process = cms.Process('SKIM')
@@ -32,7 +32,7 @@ process.source = cms.Source("PoolSource",
                             secondaryFileNames = cms.untracked.vstring()
                             )
 
-os.system('das_client.py --query="file dataset=/WRToNuMuToMuMuJJ_MW-2600_MNu-1300_TuneCUETP8M1_13TeV-pythia8/RunIISpring15DR74-Asympt25ns_MCRUN2_74_V9-v1/MINIAODSIM instance=prod/phys03" --limit=0 > pappy.txt')
+os.system('das_client.py --query="file dataset=/MuonEG/Run2015B-PromptReco-v1/MINIAOD instance=prod/phys03" --limit=0 > pappy.txt')
 
 sec_file = open('pappy.txt', 'r')
 mysecfilelist = []
@@ -40,6 +40,13 @@ for line in sec_file:
     # add as many files as you wish this way
     mysecfilelist.append(line.strip())
 process.source.fileNames = mysecfilelist
+
+import FWCore.PythonUtilities.LumiList as LumiList
+mc = True
+if 'data' in sys.argv:
+    mc = False
+if not mc:
+    process.source.lumisToProcess = LumiList.LumiList(filename = 'Cert_246908-251883_13TeV_PromptReco_Collisions15_JSON.txt').getVLuminosityBlockRange()
 
 process.options = cms.untracked.PSet(
     allowUnscheduled = cms.untracked.bool(False),
@@ -66,7 +73,7 @@ process.MINIAODSIM_signal_output = cms.OutputModule("PoolOutputModule",
     dropMetaData = cms.untracked.string('ALL'),
     eventAutoFlushCompressedSize = cms.untracked.int32(15728640),
     fastCloning = cms.untracked.bool(False),
-    fileName = cms.untracked.string('file:skim_signal.root'),
+    fileName = cms.untracked.string('file:~/eos/WR_skims/skim_signal.root'),
     outputCommands = process.MICROAODSIMEventContent.outputCommands,
     overrideInputFileSplitLevels = cms.untracked.bool(True),
     SelectEvents = cms.untracked.PSet(SelectEvents = cms.vstring('signalMuonSkim','signalElectronSkim','signalEMuSkim'))
@@ -82,7 +89,7 @@ process.MINIAODSIM_sideband_output = cms.OutputModule("PoolOutputModule",
     dropMetaData = cms.untracked.string('ALL'),
     eventAutoFlushCompressedSize = cms.untracked.int32(15728640),
     fastCloning = cms.untracked.bool(False),
-    fileName = cms.untracked.string('file:skim_sideband.root'),
+    fileName = cms.untracked.string('file:~/eos/WR_skims/skim_sideband.root'),
     outputCommands = process.MICROAODSIMEventContent.outputCommands,
     overrideInputFileSplitLevels = cms.untracked.bool(True),
     SelectEvents = cms.untracked.PSet(SelectEvents = cms.vstring('diMuonSidebandSkim','diElectronSidebandSkim','EMuSidebandSkim'))
@@ -108,8 +115,8 @@ process.EMuSidebandSkim = cms.Path(process.wREleMuonSidebandSeq)
 
 #process.MINIAODSIMoutput_step = cms.EndPath(process.microAODslimmingSeq * (process.MINIAODSIM_signal_output + process.MINIAODSIM_sideband_output))
 
-process.MINIAODSIMoutput_step = cms.EndPath(process.MINIAODSIM_signal_output)
-#process.MINIAODSIMoutput_step = cms.EndPath(process.MINIAODSIM_sideband_output)
+#process.MINIAODSIMoutput_step = cms.EndPath(process.MINIAODSIM_signal_output)
+process.MINIAODSIMoutput_step = cms.EndPath(process.MINIAODSIM_sideband_output)
 
 #do not add changes to your config after this point (unless you know what you are doing)
 

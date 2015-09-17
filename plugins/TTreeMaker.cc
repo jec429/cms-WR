@@ -61,6 +61,7 @@ private:
   const float subleading_jet_pt_cut;
   const bool muon_mode;
   const bool electron_mode;
+  const bool is_mc;
 
   struct tree_t {
     unsigned run;
@@ -205,7 +206,8 @@ TTreeMaker::TTreeMaker(const edm::ParameterSet& cfg)
     jet_eta_cut(cfg.getParameter<double>("jet_eta_cut")),
     subleading_jet_pt_cut(cfg.getParameter<double>("subleading_jet_pt_cut")),
     muon_mode(cfg.getParameter<bool>("muon_mode")),
-    electron_mode(cfg.getParameter<bool>("electron_mode"))
+    electron_mode(cfg.getParameter<bool>("electron_mode")),
+    is_mc(cfg.getParameter<bool>("is_mc"))
 {
   beamSpotToken_    = consumes<reco::BeamSpot>(cfg.getParameter <edm::InputTag>("beamSpot"));
   conversionsMiniAODToken_ = mayConsume< reco::ConversionCollection >(cfg.getParameter<edm::InputTag>("conversionsMiniAOD"));
@@ -297,8 +299,6 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
   event.getByLabel(genparticles_src, gen_particles);
   edm::Handle<reco::GenJetCollection> gen_jets;
   event.getByLabel(genjets_src, gen_jets);
-  edm::Handle<GenEventInfoProduct> evinfo;
-  event.getByLabel("generator", evinfo);
   
   std::vector<reco::GenParticle> gmuons(2);
   std::vector<reco::GenParticle> geles(2);
@@ -310,8 +310,13 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
   std::vector<pat::Jet> js;
   edm::Handle<reco::VertexCollection> primary_vertex;
   event.getByLabel("offlineSlimmedPrimaryVertices", primary_vertex);
+  edm::Handle<GenEventInfoProduct> evinfo;
 
-  nt.weight = evinfo->weight();
+  if(is_mc) 
+    {
+      event.getByLabel("generator", evinfo);
+      nt.weight = evinfo->weight();
+    }
 
   // Get the beam spot
   edm::Handle<reco::BeamSpot> theBeamSpot;
@@ -358,6 +363,8 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
   event.getByToken(eleHEEPIdFullInfoMapToken_,heep_id_cutflow_data);
 
   nt.nvertices = primary_vertex->size();
+
+  // Muon Mode
   if(muon_mode && !electron_mode){
     nt.nleptons = muons->size();
     for(auto mu : *muons){
@@ -428,6 +435,9 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
       }
     }
   }
+
+  // Muon Electron Mode
+  // Muon = leading, electron = subleading
   if(muon_mode && electron_mode){
     nt.nleptons = muons->size() + electrons->size();
     for(auto mu : *muons){
@@ -480,6 +490,7 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
     }
   
     if(mus.size() > 0){
+      //std::cout<<"mu"<<std::endl;
       nt.leading_lepton_pt = mus[0].pt();
       nt.leading_lepton_eta = mus[0].eta();
       nt.leading_lepton_phi = mus[0].phi();
@@ -489,29 +500,23 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
     }
 
     if(eles.size() > 0){
-      nt.leading_lepton_pt = eles[0].pt();
-      nt.leading_lepton_eta = eles[0].eta();
-      nt.leading_lepton_phi = eles[0].phi();
-      if(js.size() > 0) nt.dR_leadLepton_leadJet = deltaR(eles[0],js[0]);
-      if(js.size() > 1) nt.dR_leadLepton_subleadJet = deltaR(eles[0],js[1]);
+      //std::cout<<"ele"<<std::endl;
+      nt.subleading_lepton_pt = eles[0].pt();
+      nt.subleading_lepton_eta = eles[0].eta();
+      nt.subleading_lepton_phi = eles[0].phi();
+      if(js.size() > 0) nt.dR_subleadLepton_leadJet = deltaR(eles[0],js[0]);
+      if(js.size() > 1) nt.dR_subleadLepton_subleadJet = deltaR(eles[0],js[1]);
     }
 
-    if(mus.size() > 1){
-      nt.angle3D = angle(mus[0].momentum().x(),mus[0].momentum().y(),mus[0].momentum().z(),mus[1].momentum().x(),mus[1].momentum().y(),mus[1].momentum().z());
-      nt.subleading_lepton_pt = mus[1].pt();
-      nt.subleading_lepton_eta = mus[1].eta();
-      nt.subleading_lepton_phi = mus[1].phi();
-      nt.subleading_lepton_charge = mus[1].charge();
-      nt.dilepton_mass = (mus[0].p4() + mus[1].p4()).M();
-      nt.dR_leadLepton_subleadLepton = deltaR(mus[0],mus[1]);
-      if(js.size() > 0) nt.dR_subleadLepton_leadJet = deltaR(mus[1],js[0]);
-      if(js.size() > 1){
-	nt.dR_subleadLepton_subleadJet = deltaR(mus[1],js[1]);
-	nt.Mlljj = (mus[0].p4() + mus[1].p4() + js[0].p4() + js[1].p4()).M();
-      }
+    if(mus.size() > 0 && eles.size() > 0){
+      //std::cout<<"mu and ele"<<std::endl;
+      nt.dilepton_mass = (mus[0].p4() + eles[0].p4()).M();
+      nt.dR_leadLepton_subleadLepton = deltaR(mus[0],eles[0]);
+      if(js.size() > 1) nt.Mlljj = (mus[0].p4() + eles[0].p4() + js[0].p4() + js[1].p4()).M();
     }
 
     if(js.size() > 0){
+      //std::cout<<"jet"<<std::endl;
       nt.leading_jet_pt = js[0].pt();
       nt.leading_jet_eta = js[0].eta();
       nt.leading_jet_phi = js[0].phi();
@@ -523,6 +528,7 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
       }
     }
   }
+  // Electron Mode
   else if(!muon_mode && electron_mode){
     for (size_t i = 0; i < electrons->size(); ++i){
       const auto ele = electrons->ptrAt(i);

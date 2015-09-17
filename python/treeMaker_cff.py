@@ -31,6 +31,7 @@ MakeTTree_Muons = cms.EDAnalyzer('TTreeMaker',
                             Mll_cut = cms.double(0.0),
                             muon_mode = cms.bool(True),
                             electron_mode = cms.bool(False),
+                            is_mc = cms.bool(True),
                             conversionsMiniAOD  = cms.InputTag('reducedEgamma:reducedConversions'),
                             #
                             # ID decisions (common to all formats)
