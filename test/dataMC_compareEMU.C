@@ -23,32 +23,32 @@ vector<TH1F*> MakeNHistos(TString hname, int n, int bins, float x_min, float x_m
 }
 std::vector<float> PileUpWeights(TTree* tree,TTree* tree_data);
 
-void dataMC_compare(){
+void dataMC_compareEMU(){
   TString prename = Form("~/eos/WR_skims/");
 
-  TFile * hfile0 = new TFile((prename+Form("skim_ttree_dyjets.root")).Data());
-  TFile * hfile1 = new TFile((prename+Form("skim_ttree_ttbar.root")).Data());
+  TFile * hfile0 = new TFile((prename+Form("skim_ttree_emu_dyjets.root")).Data());
+  TFile * hfile1 = new TFile((prename+Form("skim_ttree_emu_ttbar.root")).Data());
   TFile * hfile2 = new TFile((prename+Form("skim_ttree_signal_2600.root")).Data());
-  TFile * hfile3 = new TFile((prename+Form("skim_ttree_wz.root")).Data());
-  TFile * hfile4 = new TFile((prename+Form("skim_ttree_zz.root")).Data());
-  TFile * hfile5 = new TFile((prename+Form("skim_ttree_wjets.root")).Data());
+  TFile * hfile3 = new TFile((prename+Form("skim_ttree_emu_wz.root")).Data());
+  TFile * hfile4 = new TFile((prename+Form("skim_ttree_emu_zz.root")).Data());
+  TFile * hfile5 = new TFile((prename+Form("skim_ttree_emu_wjets.root")).Data());
 
-  TFile * hfile_data = new TFile((prename+Form("skim_ttree_data_mumu.root")).Data());
+  TFile * hfile_data = new TFile((prename+Form("skim_ttree_data_elemu.root")).Data());
 
-  TTree *tree0 = (TTree*)hfile0->Get("MakeTTree_Muons/t");  
-  TTree *tree1 = (TTree*)hfile1->Get("MakeTTree_Muons/t");  
-  TTree *tree2 = (TTree*)hfile2->Get("MakeTTree_Muons/t");  
-  TTree *tree3 = (TTree*)hfile3->Get("MakeTTree_Muons/t");  
-  TTree *tree4 = (TTree*)hfile4->Get("MakeTTree_Muons/t");  
-  TTree *tree5 = (TTree*)hfile5->Get("MakeTTree_Muons/t");  
+  TTree *tree0 = (TTree*)hfile0->Get("MakeTTree_EleMuon/t");  
+  TTree *tree1 = (TTree*)hfile1->Get("MakeTTree_EleMuon/t");  
+  TTree *tree2 = (TTree*)hfile2->Get("MakeTTree_EleMuon/t");  
+  TTree *tree3 = (TTree*)hfile3->Get("MakeTTree_EleMuon/t");  
+  TTree *tree4 = (TTree*)hfile4->Get("MakeTTree_EleMuon/t");  
+  TTree *tree5 = (TTree*)hfile5->Get("MakeTTree_EleMuon/t");  
 
-  TTree *tree_data = (TTree*)hfile_data->Get("MakeTTree_Muons/t");  
+  TTree *tree_data = (TTree*)hfile_data->Get("MakeTTree_EleMuon/t");  
 
   //TH1::SetDefaultSumw2();
 
-  vector<TH1F*> h_Mlljj = MakeNHistos("h_Mlljj",7,30,0,1000);
-  vector<TH1F*> h_Mll = MakeNHistos("h_Mll",7,30,50,250);
-  vector<TH1F*> h_l1pt = MakeNHistos("h_l1pt",7,20,0,400);
+  vector<TH1F*> h_Mlljj = MakeNHistos("h_Mlljj",7,20,100,2000);
+  vector<TH1F*> h_Mll = MakeNHistos("h_Mll",7,20,50,500);
+  vector<TH1F*> h_l1pt = MakeNHistos("h_l1pt",7,20,0,300);
   vector<TH1F*> h_l2pt = MakeNHistos("h_l2pt",7,20,0,200);
   vector<TH1F*> h_j1pt = MakeNHistos("h_j1pt",7,30,0,500);
   vector<TH1F*> h_j2pt = MakeNHistos("h_j2pt",7,20,0,500);
@@ -167,11 +167,11 @@ void dataMC_compare(){
   std::vector<float> PUW5 = PileUpWeights(tree5,tree_data);
   std::vector<float> PUW_data = PileUpWeights(tree_data,tree_data);
   
-  Fill_Histo(histos[0],tree0,PUW0,false,false); // DY
-  Fill_Histo(histos[1],tree1,PUW1,false,false); // TTbar
-  Fill_Histo(histos[3],tree3,PUW3,false,false); // WZ
-  Fill_Histo(histos[4],tree4,PUW4,false,false); // ZZ
-  Fill_Histo(histos[5],tree5,PUW5,false,false); // WJets
+  Fill_Histo(histos[0],tree0,PUW0,true,false); // DY
+  Fill_Histo(histos[1],tree1,PUW1,true,false); // TTbar
+  Fill_Histo(histos[3],tree3,PUW3,true,false); // WZ
+  Fill_Histo(histos[4],tree4,PUW4,true,false); // ZZ
+  Fill_Histo(histos[5],tree5,PUW5,true,false); // WJets
 
   Fill_Histo(histos[6],tree_data,PUW_data,false,true);
 
@@ -179,7 +179,7 @@ void dataMC_compare(){
   for(std::vector<TH1F*>::size_type i = 0; i != nhistos; i++){
     histos[0][i]->Scale(6025.2*40.8/(19925500*0.835*0.97));
     histos[0][i]->SetFillColor(kYellow);
-    histos[1][i]->Scale(815.96*40.8/(4994250*0.666*0.99));
+    histos[1][i]->Scale(815.96*40.8/(4994250*0.666*0.89));
     histos[1][i]->SetFillColor(kGreen);
     histos[3][i]->Scale(66.1*40.8/996920);
     histos[3][i]->SetFillColor(kBlue);
@@ -252,7 +252,7 @@ void dataMC_compare(){
     histos[6][icanvas]->SetLabelSize(0.1,"y");
     histos[6][icanvas]->Draw("p");
     mycanvas->cd();
-    TString fn = "~/afshome/public_html/WR/plots/dataMC/";
+    TString fn = "~/afshome/public_html/WR/plots/dataMC_EMU/";
     TString fn_pdf = fn + fnames[icanvas].Data() + ".pdf";
     TString fn_png = fn + fnames[icanvas].Data() + ".png";
     mycanvas->Print(fn_pdf.Data());
@@ -350,10 +350,10 @@ void Fill_Histo(std::vector<TH1F*> h1, TTree* tree, std::vector<float> PUW, bool
   for (Int_t ev = 0; ev < nentries; ev++) {
     float reweight = 1;
     tree->GetEntry(ev); 
-    if(Mlljj<600 && l1_pt>60 && l2_pt>40 && j1_pt>40 && j2_pt>40 && Mll<200 && Mll>50 && dR_l1l2 > 0.1 && dR_l1j1 > 0.4 && dR_l1j2 > 0.4 && dR_l2j1 > 0.4 && dR_l2j2 > 0.4 && fabs(j1_eta)<2.4 && fabs(j2_eta)<2.4)
+    if(Mlljj>00 && l1_pt>40 && l2_pt>40 && j1_pt>40 && j2_pt>40 && Mll>50 && dR_l1l2 > 0.1 && dR_l1j1 > 0.4 && dR_l1j2 > 0.4 && dR_l2j1 > 0.4 && dR_l2j2 > 0.4 && fabs(j1_eta)<2.4 && fabs(j2_eta)<2.4)
       {
-	if(is_data && Mlljj>600) // Don't look at the signal region
-	  continue;
+	//if(is_data && Mlljj>600) // Don't look at the signal region
+	  //continue;
 	if(!is_data){
 	  if(pileup_reweight)
 	    reweight = weight/fabs(weight)*PUW[nvertices];
