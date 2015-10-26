@@ -1,0 +1,20 @@
+imax 1
+jmax 2
+kmax *
+---------------
+shapes * * simple-shapes-TH1.root $PROCESS $PROCESS_$SYSTEMATIC
+---------------
+bin 1
+observation 55646.112450
+------------------------------
+bin             1          1          1
+process         signal     ttbar     dyjets
+process         0          1          2
+rate            311         41749.999931         13896.113259
+--------------------------------
+lumi     lnN    1.10       1.0       1.10
+bgnorm   lnN    1.00       1.3       1.1
+scale  shapeN2    -           1           -   uncertainty on ttbar scale
+alpha_beta  shapeN2    -         -         1	    uncertainty in the shape of dyjets
+sigma  shapeN2    1         -         -   uncertainty on signal resolution.
+
