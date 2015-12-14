@@ -13,6 +13,7 @@
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
 #include "DataFormats/PatCandidates/interface/Jet.h"
+#include "DataFormats/PatCandidates/interface/MET.h"
 #include "DataFormats/JetReco/interface/Jet.h"
 #include "DataFormats/JetReco/interface/GenJetCollection.h"
 #include "DataFormats/Math/interface/deltaPhi.h"
@@ -30,11 +31,13 @@ public:
 
 private:
   virtual void analyze(const edm::Event&, const edm::EventSetup&);
+  static bool wayToSort(pat::Muon m1, pat::Muon m2);
 
   edm::EDGetTokenT<reco::BeamSpot> beamSpotToken_;
   const edm::InputTag muons_src;
   edm::EDGetToken electronsMiniAODToken_;
   const edm::InputTag jets_src;
+  const edm::InputTag met_src;
   const edm::InputTag genparticles_src;
   const edm::InputTag genjets_src;
   const edm::InputTag primary_vertex_src;
@@ -49,6 +52,8 @@ private:
 
   edm::EDGetTokenT<edm::ValueMap<vid::CutFlowResult> > eleHEEPIdFullInfoMapToken_;
   bool verboseIdFlag_;
+
+  const std::vector<std::string> bDiscriminators;
 
   const float Mlljj_cut;
   const float Mll_cut;
@@ -66,7 +71,7 @@ private:
   struct tree_t {
     unsigned run;
     unsigned lumi;
-    unsigned event;
+    unsigned long long event;
     
     float leading_lepton_pt;
     float subleading_lepton_pt;
@@ -83,8 +88,8 @@ private:
     float leading_jet_phi;
     float subleading_jet_phi;
 
-    float leading_lepton_charge;
-    float subleading_lepton_charge;
+    int leading_lepton_charge;
+    int subleading_lepton_charge;
 
     float dilepton_mass;
     float Mlljj;
@@ -115,6 +120,14 @@ private:
     std::vector<float> dz;
     std::vector<int> numberOfValidPixelHits;
     std::vector<int> trackerLayersWithMeasurement;
+
+    // Btagging
+    std::vector<float> leading_bTags;
+    std::vector<float> subleading_bTags;
+
+    // MET
+    float met_pt;
+    float met_phi;
 
     // Generator level quantities
     // Leading lepton corresponds to the WR daughter
@@ -149,7 +162,7 @@ private:
     void clear() {
       run = lumi = event = 0;
       leading_lepton_pt = leading_lepton_eta = leading_lepton_phi = subleading_lepton_pt = subleading_lepton_eta = subleading_lepton_phi = -999;
-      leading_lepton_charge = subleading_lepton_pt = -999;
+      leading_lepton_charge = subleading_lepton_charge = -999;
       leading_jet_pt = leading_jet_eta = leading_jet_phi = subleading_jet_pt = subleading_jet_eta = subleading_jet_phi = -999;
       gen_leading_lepton_pt = gen_leading_lepton_eta = gen_leading_lepton_phi = gen_subleading_lepton_pt = gen_subleading_lepton_eta = gen_subleading_lepton_phi = -999;
       gen_leading_jet_pt = gen_leading_jet_eta = gen_leading_jet_phi = gen_subleading_jet_pt = gen_subleading_jet_eta = gen_subleading_jet_phi = -999;
@@ -166,6 +179,11 @@ private:
       dz.clear();
       numberOfValidPixelHits.clear();
       trackerLayersWithMeasurement.clear();
+
+      leading_bTags.clear();
+      subleading_bTags.clear();
+
+      met_pt = met_phi = -999;
     
       nleptons = njets = nvertices = -1;
       lepton_pt = jet_pt = -999;
@@ -184,6 +202,7 @@ private:
 TTreeMaker::TTreeMaker(const edm::ParameterSet& cfg)
   : muons_src(cfg.getParameter<edm::InputTag>("muons_src")),
     jets_src(cfg.getParameter<edm::InputTag>("jets_src")),
+    met_src(cfg.getParameter<edm::InputTag>("met_src")),
     genparticles_src(cfg.getParameter<edm::InputTag>("genparticles_src")),
     genjets_src(cfg.getParameter<edm::InputTag>("genjets_src")),
     primary_vertex_src(cfg.getParameter<edm::InputTag>("primary_vertex_src")),
@@ -196,6 +215,9 @@ TTreeMaker::TTreeMaker(const edm::ParameterSet& cfg)
     eleHEEPIdFullInfoMapToken_(consumes<edm::ValueMap<vid::CutFlowResult> >
 			       (cfg.getParameter<edm::InputTag>("eleHEEPIdFullInfoMap"))),
     verboseIdFlag_(cfg.getParameter<bool>("eleIdVerbose")),
+    
+    bDiscriminators(cfg.getParameter<std::vector<std::string> >("bDiscriminators")),
+
     Mlljj_cut(cfg.getParameter<double>("Mlljj_cut")),
     Mll_cut(cfg.getParameter<double>("Mll_cut")),
     isolation_dR(cfg.getParameter<double>("isolation_dR")),
@@ -214,9 +236,9 @@ TTreeMaker::TTreeMaker(const edm::ParameterSet& cfg)
   electronsMiniAODToken_   = mayConsume<edm::View<reco::GsfElectron> >(cfg.getParameter<edm::InputTag>("electrons_src"));
   edm::Service<TFileService> fs;
   tree = fs->make<TTree>("t", "");
-  tree->Branch("run", &nt.run, "run/i");
-  tree->Branch("lumi", &nt.lumi, "lumi/i");
-  tree->Branch("event", &nt.event, "event/i");
+  tree->Branch("run", &nt.run);
+  tree->Branch("lumi", &nt.lumi);
+  tree->Branch("event", &nt.event);
 
   tree->Branch("leading_lepton_pt", &nt.leading_lepton_pt, "leading_lepton_pt/F");
   tree->Branch("leading_lepton_eta", &nt.leading_lepton_eta, "leading_lepton_eta/F");
@@ -231,8 +253,8 @@ TTreeMaker::TTreeMaker(const edm::ParameterSet& cfg)
   tree->Branch("subleading_jet_eta", &nt.subleading_jet_eta, "subleading_jet_eta/F");
   tree->Branch("subleading_jet_phi", &nt.subleading_jet_phi, "subleading_jet_phi/F");
 
-  tree->Branch("leading_lepton_charge", &nt.leading_lepton_charge, "leading_lepton_charge/i");
-  tree->Branch("subleading_lepton_charge", &nt.subleading_lepton_charge, "subleading_lepton_charge/i");
+  tree->Branch("leading_lepton_charge", &nt.leading_lepton_charge, "leading_lepton_charge/I");
+  tree->Branch("subleading_lepton_charge", &nt.subleading_lepton_charge, "subleading_lepton_charge/I");
 
   tree->Branch("gen_leading_lepton_pt", &nt.gen_leading_lepton_pt, "gen_leading_lepton_pt/F");
   tree->Branch("gen_leading_lepton_eta", &nt.gen_leading_lepton_eta, "gen_leading_lepton_eta/F");
@@ -272,6 +294,12 @@ TTreeMaker::TTreeMaker(const edm::ParameterSet& cfg)
   tree->Branch("numberOfValidPixelHits",&nt.numberOfValidPixelHits);
   tree->Branch("trackerLayersWithMeasurement",&nt.trackerLayersWithMeasurement);
 
+  tree->Branch("leading_bTags",&nt.leading_bTags);
+  tree->Branch("subleading_bTags",&nt.subleading_bTags);
+
+  tree->Branch("met_pt",&nt.met_pt);
+  tree->Branch("met_phi",&nt.met_phi);
+
   tree->Branch("nleptons",&nt.nleptons,"nleptons/i");
   tree->Branch("njets",&nt.njets,"njets/i");
   tree->Branch("nvertices",&nt.nvertices,"nvertices/i");
@@ -282,6 +310,8 @@ TTreeMaker::TTreeMaker(const edm::ParameterSet& cfg)
   tree->Branch("angle3D",&nt.angle3D,"angle3D/F");
 
 }
+
+bool TTreeMaker::wayToSort(pat::Muon m1, pat::Muon m2) { return m1.pt() > m2.pt(); }
 
 void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
   nt.clear();
@@ -295,6 +325,8 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
   event.getByToken(electronsMiniAODToken_,electrons);
   edm::Handle<pat::JetCollection> jets;
   event.getByLabel(jets_src, jets);
+  edm::Handle<pat::METCollection> mets;
+  event.getByLabel(met_src, mets);
   edm::Handle<reco::GenParticleCollection> gen_particles;
   event.getByLabel(genparticles_src, gen_particles);
   edm::Handle<reco::GenJetCollection> gen_jets;
@@ -362,46 +394,43 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
   edm::Handle<edm::ValueMap<vid::CutFlowResult> > heep_id_cutflow_data;
   event.getByToken(eleHEEPIdFullInfoMapToken_,heep_id_cutflow_data);
 
+  nt.met_pt = mets->at(0).pt();
+  nt.met_phi = mets->at(0).phi();
+
   nt.nvertices = primary_vertex->size();
+  
+  for(auto j : *jets){  
+    nt.jet_pt = j.pt();
+    if(j.pt() > leading_jet_pt_cut && fabs(j.eta()) < jet_eta_cut){
+      js.push_back(j);  
+    }
+  }
+  nt.njets = js.size();
 
   // Muon Mode
   if(muon_mode && !electron_mode){
-    nt.nleptons = muons->size();
     for(auto mu : *muons){
-      nt.lepton_pt = mu.pt();
-      nt.isGlobal.push_back(mu.isGlobalMuon());
-      nt.numberOfValidMuonHits.push_back(mu.numberOfValidHits());
-      nt.numberOfMatchedStations.push_back(mu.numberOfMatchedStations());
-      nt.sigmapt.push_back(mu.tunePMuonBestTrack()->ptError()/mu.pt());
-      nt.dxy.push_back(mu.dB());
-      nt.dz.push_back(mu.tunePMuonBestTrack()->dz(primary_vertex->at(0).position()));
-      if(mu.innerTrack().isAvailable()){
-	//std::cout<<"Inner"<<std::endl;
-	nt.numberOfValidPixelHits.push_back(mu.innerTrack()->hitPattern().numberOfValidPixelHits());
-	nt.trackerLayersWithMeasurement.push_back(mu.innerTrack()->hitPattern().trackerLayersWithMeasurement());
-      }
-      if(mu.pt() > leading_lepton_pt_cut && fabs(mu.eta()) < lepton_eta_cut && mu.isHighPtMuon(primary_vertex->at(0))){
-	mus.push_back(mu);	     
+      if(mu.pt() > leading_lepton_pt_cut && fabs(mu.eta()) < lepton_eta_cut && mu.isHighPtMuon(primary_vertex->at(0)) && (mu.isolationR03().sumPt/mu.pt()) < 0.1 ){
+	if(js.size()>1)
+	  if(deltaR(js[0],mu)>isolation_dR && deltaR(js[1],mu)>isolation_dR)
+	    mus.push_back(mu);	     
       }    
-    }
-    std::vector<pat::Jet> selected_jets;
-    for(auto j: *jets)
-      //if((j.neutralHadronEnergyFraction()<0.99 && j.neutralEmEnergyFraction()<0.99 && (j.chargedMultiplicity()+j.neutralMultiplicity())>1 && j.muonEnergyFraction()<0.8) && ((abs(j.eta())<=2.4 && j.chargedHadronEnergyFraction()>0 && j.chargedMultiplicity()>0 && j.chargedEmEnergyFraction()<0.99) || abs(j.eta())>2.4))
-      selected_jets.push_back(j);
-    
-    nt.njets = selected_jets.size();
-    for(auto j : selected_jets){  
-      nt.jet_pt = j.pt();
-      if(j.pt() > leading_jet_pt_cut && fabs(j.eta()) < jet_eta_cut){
-	bool isolated = true;
-	for(auto m : mus){
-	  if(deltaR(m,j) < isolation_dR) isolated = false;
-	}    
-	if(isolated) js.push_back(j);  
-      }
-    }
-  
+    }  
+
+    sort(mus.begin(), mus.end(), wayToSort);    
+    nt.nleptons = mus.size();
+
     if(mus.size() > 0){
+      nt.isGlobal.push_back(mus[0].isGlobalMuon());
+      nt.numberOfValidMuonHits.push_back(mus[0].numberOfValidHits());
+      nt.numberOfMatchedStations.push_back(mus[0].numberOfMatchedStations());
+      nt.sigmapt.push_back(mus[0].tunePMuonBestTrack()->ptError()/mus[0].pt());
+      nt.dxy.push_back(mus[0].dB());
+      nt.dz.push_back(mus[0].tunePMuonBestTrack()->dz(primary_vertex->at(0).position()));
+      if(mus[0].innerTrack().isAvailable()){
+	nt.numberOfValidPixelHits.push_back(mus[0].innerTrack()->hitPattern().numberOfValidPixelHits());
+	nt.trackerLayersWithMeasurement.push_back(mus[0].innerTrack()->hitPattern().trackerLayersWithMeasurement());
+      }
       nt.leading_lepton_pt = mus[0].pt();
       nt.leading_lepton_eta = mus[0].eta();
       nt.leading_lepton_phi = mus[0].phi();
@@ -409,6 +438,16 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
       if(js.size() > 0) nt.dR_leadLepton_leadJet = deltaR(mus[0],js[0]);
       if(js.size() > 1) nt.dR_leadLepton_subleadJet = deltaR(mus[0],js[1]);
       if(mus.size() > 1){
+	nt.isGlobal.push_back(mus[1].isGlobalMuon());
+	nt.numberOfValidMuonHits.push_back(mus[1].numberOfValidHits());
+	nt.numberOfMatchedStations.push_back(mus[1].numberOfMatchedStations());
+	nt.sigmapt.push_back(mus[1].tunePMuonBestTrack()->ptError()/mus[1].pt());
+	nt.dxy.push_back(mus[1].dB());
+	nt.dz.push_back(mus[1].tunePMuonBestTrack()->dz(primary_vertex->at(0).position()));
+	if(mus[1].innerTrack().isAvailable()){
+	  nt.numberOfValidPixelHits.push_back(mus[1].innerTrack()->hitPattern().numberOfValidPixelHits());
+	  nt.trackerLayersWithMeasurement.push_back(mus[1].innerTrack()->hitPattern().trackerLayersWithMeasurement());
+	}
 	nt.angle3D = angle(mus[0].momentum().x(),mus[0].momentum().y(),mus[0].momentum().z(),mus[1].momentum().x(),mus[1].momentum().y(),mus[1].momentum().z());
 	nt.subleading_lepton_pt = mus[1].pt();
 	nt.subleading_lepton_eta = mus[1].eta();
@@ -427,11 +466,15 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
       nt.leading_jet_pt = js[0].pt();
       nt.leading_jet_eta = js[0].eta();
       nt.leading_jet_phi = js[0].phi();
+      for(auto b:bDiscriminators)
+	nt.leading_bTags.push_back(js[0].bDiscriminator(b));
       if(js.size() > 1){
 	nt.subleading_jet_pt = js[1].pt();
 	nt.subleading_jet_eta = js[1].eta();
 	nt.subleading_jet_phi = js[1].phi();
 	nt.dR_leadJet_subleadJet = deltaR(js[0],js[1]);
+	for(auto b:bDiscriminators)
+	  nt.subleading_bTags.push_back(js[1].bDiscriminator(b));
       }
     }
   }
@@ -439,59 +482,37 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
   // Muon Electron Mode
   // Muon = leading, electron = subleading
   if(muon_mode && electron_mode){
-    nt.nleptons = muons->size() + electrons->size();
-    for(auto mu : *muons){
-      nt.isGlobal.push_back(mu.isGlobalMuon());
-      nt.numberOfValidMuonHits.push_back(mu.numberOfValidHits());
-      nt.numberOfMatchedStations.push_back(mu.numberOfMatchedStations());
-      nt.sigmapt.push_back(mu.tunePMuonBestTrack()->ptError()/mu.pt());
-      nt.dxy.push_back(mu.dB());
-      nt.dz.push_back(mu.tunePMuonBestTrack()->dz(primary_vertex->at(0).position()));
-      if(mu.innerTrack().isAvailable()){
-	nt.numberOfValidPixelHits.push_back(mu.innerTrack()->hitPattern().numberOfValidPixelHits());
-	nt.trackerLayersWithMeasurement.push_back(mu.innerTrack()->hitPattern().trackerLayersWithMeasurement());
-      }
-      if(mu.pt() > leading_lepton_pt_cut && fabs(mu.eta()) < lepton_eta_cut && mu.isHighPtMuon(primary_vertex->at(0))){
-	mus.push_back(mu);	     
+    for(auto mu : *muons){    
+      if(mu.pt() > leading_lepton_pt_cut && fabs(mu.eta()) < lepton_eta_cut && mu.isHighPtMuon(primary_vertex->at(0)) && (mu.isolationR03().sumPt/mu.pt()) < 0.1 ){
+	if(js.size()>1)
+	  if(deltaR(js[0],mu)>isolation_dR && deltaR(js[1],mu)>isolation_dR)
+	    mus.push_back(mu);	     
       }    
     }
     for (size_t i = 0; i < electrons->size(); ++i){
       const auto ele = electrons->ptrAt(i);
-      //
-      // Look up and save the ID decisions
-      // 
-      //bool isPassVeto  = (*veto_id_decisions)[ele];
-      //bool isPassLoose  = (*loose_id_decisions)[ele];
-      //bool isPassMedium = (*medium_id_decisions)[ele];
-      //bool isPassTight  = (*tight_id_decisions)[ele];
       bool isPassHEEP = (*heep_id_decisions)[ele];
-
-      nt.nleptons = electrons->size();       
       if(ele->pt() > leading_lepton_pt_cut && fabs(ele->eta()) < lepton_eta_cut && isPassHEEP){
-	eles.push_back(*ele);	     
+	if(js.size()>1)
+	  if(deltaR(js[0],*ele)>isolation_dR && deltaR(js[1],*ele)>isolation_dR)
+	    eles.push_back(*ele);	     
       }
     }
 
-    std::vector<pat::Jet> selected_jets;
-    for(auto j: *jets)
-      //if((j.neutralHadronEnergyFraction()<0.99 && j.neutralEmEnergyFraction()<0.99 && (j.chargedMultiplicity()+j.neutralMultiplicity())>1 && j.muonEnergyFraction()<0.8) && ((abs(j.eta())<=2.4 && j.chargedHadronEnergyFraction()>0 && j.chargedMultiplicity()>0 && j.chargedEmEnergyFraction()<0.99) || abs(j.eta())>2.4))
-      selected_jets.push_back(j);
-    
-    nt.njets = selected_jets.size();
-    for(auto j : selected_jets){  
-      nt.jet_pt = j.pt();
-      if(j.pt() > leading_jet_pt_cut && fabs(j.eta()) < jet_eta_cut){
-	bool isolated = true;
-	for(auto m : mus){
-	  if(deltaR(m,j) < isolation_dR) isolated = false;
-	}    
-	if(isolated) js.push_back(j);  
-      }
-    }
-  
+    sort(mus.begin(), mus.end(), wayToSort);
+    nt.nleptons = mus.size() + eles.size();
+
     if(mus.size() > 0){
-      //std::cout<<"mu"<<std::endl;
-      nt.leading_lepton_pt = mus[0].pt();
+      nt.isGlobal.push_back(mus[0].isGlobalMuon());
+      nt.numberOfValidMuonHits.push_back(mus[0].numberOfValidHits());
+      nt.numberOfMatchedStations.push_back(mus[0].numberOfMatchedStations());
+      nt.sigmapt.push_back(mus[0].tunePMuonBestTrack()->ptError()/mus[0].pt());
+      nt.dxy.push_back(mus[0].dB());
+      nt.dz.push_back(mus[0].tunePMuonBestTrack()->dz(primary_vertex->at(0).position()));
+      if(mus[0].innerTrack().isAvailable()){
+	nt.numberOfValidPixelHits.push_back(mus[0].innerTrack()->hitPattern().numberOfValidPixelHits());
+	nt.trackerLayersWithMeasurement.push_back(mus[0].innerTrack()->hitPattern().trackerLayersWithMeasurement());
+      }      nt.leading_lepton_pt = mus[0].pt();
       nt.leading_lepton_eta = mus[0].eta();
       nt.leading_lepton_phi = mus[0].phi();
       nt.leading_lepton_charge = mus[0].charge();
@@ -520,11 +541,15 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
       nt.leading_jet_pt = js[0].pt();
       nt.leading_jet_eta = js[0].eta();
       nt.leading_jet_phi = js[0].phi();
+      for(auto b:bDiscriminators)
+	nt.leading_bTags.push_back(js[0].bDiscriminator(b));
       if(js.size() > 1){
 	nt.subleading_jet_pt = js[1].pt();
 	nt.subleading_jet_eta = js[1].eta();
 	nt.subleading_jet_phi = js[1].phi();
 	nt.dR_leadJet_subleadJet = deltaR(js[0],js[1]);
+	for(auto b:bDiscriminators)
+	  nt.subleading_bTags.push_back(js[1].bDiscriminator(b));
       }
     }
   }
@@ -532,37 +557,16 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
   else if(!muon_mode && electron_mode){
     for (size_t i = 0; i < electrons->size(); ++i){
       const auto ele = electrons->ptrAt(i);
-      //
-      // Look up and save the ID decisions
-      // 
-      //bool isPassVeto  = (*veto_id_decisions)[ele];
-      //bool isPassLoose  = (*loose_id_decisions)[ele];
-      //bool isPassMedium = (*medium_id_decisions)[ele];
-      //bool isPassTight  = (*tight_id_decisions)[ele];
       bool isPassHEEP = (*heep_id_decisions)[ele];
-
-      nt.nleptons = electrons->size();       
       if(ele->pt() > leading_lepton_pt_cut && fabs(ele->eta()) < lepton_eta_cut && isPassHEEP){
-	eles.push_back(*ele);	     
+	if(js.size()>1)
+	  if(deltaR(js[0],*ele)>isolation_dR && deltaR(js[1],*ele)>isolation_dR)
+	    eles.push_back(*ele);	     
       }
     }
     
-    std::vector<pat::Jet> selected_jets;
-    for(auto j: *jets)
-      //if((j.neutralHadronEnergyFraction()<0.99 && j.neutralEmEnergyFraction()<0.99 && (j.chargedMultiplicity()+j.neutralMultiplicity())>1 && j.muonEnergyFraction()<0.8) && ((abs(j.eta())<=2.4 && j.chargedHadronEnergyFraction()>0 && j.chargedMultiplicity()>0 && j.chargedEmEnergyFraction()<0.99) || abs(j.eta())>2.4))
-      selected_jets.push_back(j);
-    
-    nt.njets = selected_jets.size();
-    for(auto j : selected_jets){
-      if(j.pt() > leading_jet_pt_cut && fabs(j.eta()) < jet_eta_cut){
-	bool isolated = true;
-	for(auto e : eles){
-	  if(deltaR(e,j) < isolation_dR) isolated = false;
-	}    
-	if(isolated) js.push_back(j);  
-      }
-    }
-  
+    nt.nleptons = eles.size();
+
     if(eles.size() > 0){
       nt.leading_lepton_pt = eles[0].pt();
       nt.leading_lepton_eta = eles[0].eta();
@@ -587,11 +591,15 @@ void TTreeMaker::analyze(const edm::Event& event, const edm::EventSetup&) {
       nt.leading_jet_pt = js[0].pt();
       nt.leading_jet_eta = js[0].eta();
       nt.leading_jet_phi = js[0].phi();
+      for(auto b:bDiscriminators)
+	nt.leading_bTags.push_back(js[0].bDiscriminator(b));
       if(js.size() > 1){
 	nt.subleading_jet_pt = js[1].pt();
 	nt.subleading_jet_eta = js[1].eta();
 	nt.subleading_jet_phi = js[1].phi();
 	nt.dR_leadJet_subleadJet = deltaR(js[0],js[1]);
+	for(auto b:bDiscriminators)
+	  nt.subleading_bTags.push_back(js[1].bDiscriminator(b));
       }
     }
   }
