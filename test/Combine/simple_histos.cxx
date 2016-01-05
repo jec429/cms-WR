@@ -19,14 +19,15 @@ void simple_histos() {
   RooRealVar alpha_down("alpha_down","alpha_down",1.0e+05,0.,1.0e+06) ;
   RooRealVar beta_down("beta_down","beta_down",0.1,0.0,1.0) ;
 
-  TH1F *h0 = new TH1F("h0","",50,550,3000);  
+  TH1F *h0 = new TH1F("h0","",50,550,2500);  
   makeHisto(h0);
+  //cout<<"Histo INTEGRAL="<<h0->Integral()<<endl;
   RooDataHist dyhist("dyhist","",x,h0);
-  RooGenericPdf dyjets("dyjets","alpha*exp(-beta*x^(0.5))",RooArgSet(x,alpha,beta)) ; 
+  RooGenericPdf dyjets("dyjets","alpha*exp(-beta*x)",RooArgSet(x,alpha,beta)) ; 
   dyjets.fitTo(dyhist, SumW2Error(kTRUE));
-  RooGenericPdf dyjets_up_fit("dyjets_up_fit","alpha_up*exp(-beta_up*x^(0.6))",RooArgSet(x,alpha_up,beta_up)) ; 
+  RooGenericPdf dyjets_up_fit("dyjets_up_fit","alpha_up*exp(-beta_up*x^(1.1))",RooArgSet(x,alpha_up,beta_up)) ; 
   dyjets_up_fit.fitTo(dyhist, SumW2Error(kTRUE));
-  RooGenericPdf dyjets_down_fit("dyjets_down_fit","alpha_down*exp(-beta_down*x^(0.4))",RooArgSet(x,alpha_down,beta_down)) ; 
+  RooGenericPdf dyjets_down_fit("dyjets_down_fit","alpha_down*exp(-beta_down*x^(0.9))",RooArgSet(x,alpha_down,beta_down)) ; 
   dyjets_down_fit.fitTo(dyhist, SumW2Error(kTRUE));
 
   RooPlot* xframe = x.frame() ;
@@ -47,9 +48,9 @@ void simple_histos() {
   TH1 *ttbar_up = ttbar.createHistogram("x"); ttbar_up->SetName("ttbar_scaleUp"); ttbar_up->Scale(50919./72835*1.1 * 57.35*2460/(30479698)) ; // Scale by flavor factor and lumi
   TH1 *ttbar_down = ttbar.createHistogram("x"); ttbar_down->SetName("ttbar_scaleDown"); ttbar_down->Scale(50919./72835*0.9 * 57.35*2460/(30479698)) ; // Scale by flavor factor and lumi
 
-  TH1 *dyjets_nominal = dyjets.createHistogram("x"); dyjets_nominal->SetName("dyjets"); dyjets_nominal->Scale(2460/100000.) ; // Scale by lumi
-  TH1 *dyjets_up = dyjets_up_fit.createHistogram("x"); dyjets_up->SetName("dyjets_alpha_betaUp"); dyjets_up->Scale(2460/100000.) ; // Scale by lumi
-  TH1 *dyjets_down = dyjets_down_fit.createHistogram("x"); dyjets_down->SetName("dyjets_alpha_betaDown"); dyjets_down->Scale(2460/100000.) ; // Scale by lumi
+  TH1 *dyjets_nominal = dyjets.createHistogram("x"); dyjets_nominal->SetName("dyjets"); dyjets_nominal->Scale(4467.64*2460/100000.) ; // Scale by DY integral and lumi
+  TH1 *dyjets_up = dyjets_up_fit.createHistogram("x"); dyjets_up->SetName("dyjets_alpha_betaUp"); dyjets_up->Scale(4467.64*2460/100000.) ; // Scale by DY integral and by lumi
+  TH1 *dyjets_down = dyjets_down_fit.createHistogram("x"); dyjets_down->SetName("dyjets_alpha_betaDown"); dyjets_down->Scale(4467.64*2460/100000.) ; // Scale by DY integral and by lumi
 
   TH1 *signal_nominal = gauss.createHistogram("x"); 
   signal_nominal->SetName("signal"); signal_nominal->Scale(0.062200*2460); // Cross-section scale and 2.460 fb-1
