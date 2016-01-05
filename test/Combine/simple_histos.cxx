@@ -43,22 +43,22 @@ void simple_histos() {
  
   // ------------ Make histograms ---------------------------
   TFile *allHistFile = new TFile("simple-shapes-TH1.root", "RECREATE");
-  TH1 *ttbar_nominal = ttbar.createHistogram("x"); ttbar_nominal->SetName("ttbar"); ttbar_nominal->Scale(41750./60506.) ; // Scale by flavor factor
-  TH1 *ttbar_up = ttbar.createHistogram("x"); ttbar_up->SetName("ttbar_scaleUp"); ttbar_up->Scale(41750./60506.*1.1) ; // Scale by flavor factor
-  TH1 *ttbar_down = ttbar.createHistogram("x"); ttbar_down->SetName("ttbar_scaleDown"); ttbar_down->Scale(41750./60506.*0.9) ; // Scale by flavor factor
+  TH1 *ttbar_nominal = ttbar.createHistogram("x"); ttbar_nominal->SetName("ttbar"); ttbar_nominal->Scale(50919./72835 * 57.35*2460/(30479698)) ; // Scale by flavor factor and lumi
+  TH1 *ttbar_up = ttbar.createHistogram("x"); ttbar_up->SetName("ttbar_scaleUp"); ttbar_up->Scale(50919./72835*1.1 * 57.35*2460/(30479698)) ; // Scale by flavor factor and lumi
+  TH1 *ttbar_down = ttbar.createHistogram("x"); ttbar_down->SetName("ttbar_scaleDown"); ttbar_down->Scale(50919./72835*0.9 * 57.35*2460/(30479698)) ; // Scale by flavor factor and lumi
 
-  TH1 *dyjets_nominal = dyjets.createHistogram("x"); dyjets_nominal->SetName("dyjets"); dyjets_nominal->Scale(1.391667e+04) ; // Scale by the data prediction
-  TH1 *dyjets_up = dyjets_up_fit.createHistogram("x"); dyjets_up->SetName("dyjets_alpha_betaUp"); dyjets_up->Scale(1.391667e+04) ; // Scale by the data prediction
-  TH1 *dyjets_down = dyjets_down_fit.createHistogram("x"); dyjets_down->SetName("dyjets_alpha_betaDown"); dyjets_down->Scale(1.391667e+04) ; // Scale by the data prediction
+  TH1 *dyjets_nominal = dyjets.createHistogram("x"); dyjets_nominal->SetName("dyjets"); dyjets_nominal->Scale(2460/100000.) ; // Scale by lumi
+  TH1 *dyjets_up = dyjets_up_fit.createHistogram("x"); dyjets_up->SetName("dyjets_alpha_betaUp"); dyjets_up->Scale(2460/100000.) ; // Scale by lumi
+  TH1 *dyjets_down = dyjets_down_fit.createHistogram("x"); dyjets_down->SetName("dyjets_alpha_betaDown"); dyjets_down->Scale(2460/100000.) ; // Scale by lumi
 
   TH1 *signal_nominal = gauss.createHistogram("x"); 
-  signal_nominal->SetName("signal"); signal_nominal->Scale(0.062200*5000); // Cross-section scale and 5 fb-1
+  signal_nominal->SetName("signal"); signal_nominal->Scale(0.062200*2460); // Cross-section scale and 2.460 fb-1
   sigma.setVal(1.6*300);
   TH1 *signal_up = gauss.createHistogram("x");  
-  signal_up->SetName("signal_sigmaUp"); signal_up->Scale(0.062200*5000);
+  signal_up->SetName("signal_sigmaUp"); signal_up->Scale(0.062200*2460);
   sigma.setVal(0.7*300);
   TH1 *signal_down = gauss.createHistogram("x");  
-  signal_down->SetName("signal_sigmaDown"); signal_down->Scale(0.062200*5000);
+  signal_down->SetName("signal_sigmaDown"); signal_down->Scale(0.062200*2460);
 
   TH1 *hdata_b =  ttbar.createHistogram("x"); hdata_b->Scale(41750./60506.); hdata_b->Add(dyjets_nominal); hdata_b->SetName("data_obs");
 
@@ -70,8 +70,8 @@ void simple_histos() {
 
 void makeHisto(TH1F* h1){
   
-  TString pre_name = Form("~/eos/WR_skims/triggered/dysamples_powheg/");
-  TString fnames[] = {"skim_ttree_M_120_200.root","skim_ttree_M_200_400.root","skim_ttree_M_400_800.root","skim_ttree_M_800_1400.root","skim_ttree_M_1400_2300.root","skim_ttree_M_2300_3500.root","skim_ttree_M_3500_4500.root","skim_ttree_M_4500_6000.root","skim_ttree_M_6000_Inf.root"};
+  TString pre_name = Form("~/eos/WR_skims/miniaod_v2/dysamples_powheg/");
+  TString fnames[] = {"skim_ttree_120to200.root","skim_ttree_200to400.root","skim_ttree_400to800.root","skim_ttree_800to1400.root","skim_ttree_1400to2300.root","skim_ttree_2300to3500.root","skim_ttree_3500to4500.root","skim_ttree_4500to6000.root","skim_ttree_6000toInf.root"};
   float xsecs[] = {19.32,2.731,0.241,0.01678,0.00139,0.00008948,0.000004135,4.56e-7,2.066e-8};
 
   for(int i=0;i<9;i++){
