@@ -58,7 +58,7 @@ void DY_RooFit(){
   RooRealVar g3("g3","g3",0,100000) ;
   
 
-  RooGenericPdf f1("f1","exp(-beta*x)",RooArgSet(x,beta)) ; 
+  RooGenericPdf f1("f1","alpha*exp(-beta*x)",RooArgSet(x,alpha,beta)) ; 
   //f1.fitTo(data, SumW2Error(kTRUE), Range(700,5000));
   f1.fitTo(data, SumW2Error(kTRUE), PrintLevel(3));
   RooExponential model("model","model",x,beta2) ;
@@ -223,59 +223,16 @@ void DY_RooFit(){
   cout << "chi^2 = " << frame51->chiSquare() << endl ;
   cout << "chi^2 = " << frame61->chiSquare() << endl ;
 
-  /*
-  TF1 *r_f1=(TF1*)f1.asTF( x );
-  TF1 *r_f2=(TF1*)f2.asTF( x );
-  TF1 *r_f3=(TF1*)f3.asTF( x );
-  TF1 *r_f4=(TF1*)f4.asTF( x );
-  cout<<r_f1->Eval(1000)<<endl;
+  cout<< "Parameters" <<endl;
+  cout<<"f1:"<<alpha.getVal()<<" "<<beta.getVal()<<endl;
+  cout<<"f2:"<<c0.getVal()<<" "<<c1.getVal()<<" "<<c2.getVal()<<endl;
+  cout<<"f3:"<<d0.getVal()<<" "<<d1.getVal()<<" "<<d2.getVal()<<" "<<d3.getVal()<<endl;
+  cout<<"f4:"<<e0.getVal()<<" "<<e1.getVal()<<endl;
+  cout<<"f5:"<<beta2.getVal()<<endl;
+  cout<<"f6:"<<g0.getVal()<<" "<<g1.getVal()<<" "<<g2.getVal()<<" "<<g3.getVal()<<endl;
+  
 
   
-  // TF1* r_f1 = new TF1("r_f1","[0]*exp(-[1]*x)",700,5000);
-  // r_f1->SetParameter(0,alpha.getVal());
-  // r_f1->SetParameter(1,beta.getVal());
-  // TF1* r_f2 = new TF1("r_f2","([0]*(1-x/13000)^[1])/(x/13000)^[2]",700,5000);
-  // r_f2->SetParameter(0,c0.getVal());
-  // r_f2->SetParameter(1,c1.getVal());
-  // r_f2->SetParameter(2,c2.getVal());
-  // TF1* r_f3 = new TF1("r_f3","([0]*(1-x/13000)^[1])/(x/13000)^([2]+[3]*TMath::Log(x/13000))",700,5000);
-  // r_f3->SetParameter(0,d0.getVal());
-  // r_f3->SetParameter(1,d1.getVal());
-  // r_f3->SetParameter(2,d2.getVal());
-  // r_f3->SetParameter(3,d3.getVal());
-
-   TH1F *res_f1 = new TH1F("res_f1","",44,600,5000);
-   TH1F *res_f2 = new TH1F("res_f2","",44,600,5000);
-   TH1F *res_f3 = new TH1F("res_f3","",44,600,5000);
-   TH1F *res_f4 = new TH1F("res_f4","",44,600,5000);
-   for(int i=1;i<44;i++){  
-     res_f1->SetBinContent(i,(h_sign_Mlljj_200->GetBinContent(i)-r_f1->Eval(h_sign_Mlljj_200->GetXaxis()->GetBinCenter(i)))/r_f1->Eval(h_sign_Mlljj_200->GetXaxis()->GetBinCenter(i)));
-     res_f2->SetBinContent(i,(h_sign_Mlljj_200->GetBinContent(i)-r_f2->Eval(h_sign_Mlljj_200->GetXaxis()->GetBinCenter(i)))/r_f2->Eval(h_sign_Mlljj_200->GetXaxis()->GetBinCenter(i)));
-     res_f3->SetBinContent(i,(h_sign_Mlljj_200->GetBinContent(i)-r_f3->Eval(h_sign_Mlljj_200->GetXaxis()->GetBinCenter(i)))/r_f3->Eval(h_sign_Mlljj_200->GetXaxis()->GetBinCenter(i)));    
-     res_f4->SetBinContent(i,(h_sign_Mlljj_200->GetBinContent(i)-r_f4->Eval(h_sign_Mlljj_200->GetXaxis()->GetBinCenter(i)))/r_f4->Eval(h_sign_Mlljj_200->GetXaxis()->GetBinCenter(i)));    
-   }
-  
-  // //h_sign_Mlljj_200->Fit(r_f2,"RL");
-
-  TCanvas *canvas = new TCanvas("canvas","",200,10,700,500);
-  //r_f1->GetYaxis()->SetRangeUser(-10,10);
-  h_sign_Mlljj_200->Draw();
-  //r_f1->SetLineColor(kBlue);
-  //r_f1->Draw("same");
-  //r_f2->SetLineColor(kRed);
-  //r_f2->Draw("same");
-  //r_f3->SetLineColor(kGreen);
-  //r_f3->Draw("same");
-  TCanvas *canvas2 = new TCanvas("canvas2","",200,10,700,500);
-  res_f1->GetYaxis()->SetRangeUser(-100,100);
-  res_f1->Draw();
-  res_f2->SetLineColor(kRed);
-  res_f2->Draw("same");
-  res_f3->SetLineColor(kGreen);
-  res_f3->Draw("same");
-  res_f4->SetLineColor(kCyan);
-  res_f4->Draw("same");
-  */
 }
 
 void cutTTree_Mlljj(TTree* tree, TH1F* h1, float xsec){
